@@ -19,7 +19,8 @@ key_file = {
 }
 
 dataset_dir = os.path.dirname(os.path.abspath(__file__))
-save_file = dataset_dir + "/mnist.pkl"
+def get_save_file_path(str):
+    return "{0}/mnist_{1}.pkl".format(dataset_dir, str)
 
 train_num = 60000
 test_num = 10000
@@ -62,20 +63,20 @@ def _load_img(file_name):
     
     return data
     
-def _convert_numpy():
-    dataset = {}
-    dataset['train_img'] =  _load_img(key_file['train_img'])
-    dataset['train_label'] = _load_label(key_file['train_label'])    
-    dataset['test_img'] = _load_img(key_file['test_img'])
-    dataset['test_label'] = _load_label(key_file['test_label'])
+def _convert_numpy(key):
+    dataset = None
+    if "img" in key:
+        dataset = _load_img(key_file[key]).tolist()
+    elif "label" in key:
+        dataset = _load_label(key_file[key]).tolist()
     
     return dataset
 
-def init_mnist():
-    download_mnist()
-    dataset = _convert_numpy()
-    print("Creating pickle file ...")
-    with open(save_file, 'wb') as f:
+def init_mnist(key):
+    _download(key_file[key])
+    dataset = _convert_numpy(key)
+    print("Creating pickle {0} file ...".format(key))
+    with open(get_save_file_path(key), 'wb') as f:
         pickle.dump(dataset, f, -1)
     print("Done!")
 
@@ -102,11 +103,13 @@ def load_mnist(normalize=True, flatten=True, one_hot_label=False):
     -------
     (訓練画像, 訓練ラベル), (テスト画像, テストラベル)
     """
-    if not os.path.exists(save_file):
-        init_mnist()
+    dataset = {}
+    for key in key_file.keys():
+        if not os.path.exists(get_save_file_path(key)):
+            init_mnist(key)
         
-    with open(save_file, 'rb') as f:
-        dataset = pickle.load(f)
+        with open(get_save_file_path(key), 'rb') as f:
+            dataset[key] = np.array(pickle.load(f))
     
     if normalize:
         for key in ('train_img', 'test_img'):
